@@ -1,4 +1,4 @@
-﻿    using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,7 +17,7 @@ namespace M220N.Repositories
 
         public UsersRepository(IMongoClient mongoClient)
         {
-            var camelCaseConvention = new ConventionPack {new CamelCaseElementNameConvention()};
+            var camelCaseConvention = new ConventionPack { new CamelCaseElementNameConvention() };
             ConventionRegistry.Register("CamelCase", camelCaseConvention, type => true);
 
             _usersCollection = mongoClient.GetDatabase("sample_mflix").GetCollection<User>("users");
@@ -52,9 +52,8 @@ namespace M220N.Repositories
         {
             // TODO Ticket: User Management
             // Retrieve the user document corresponding with the user's email.
-            //
-            // // return await _usersCollection.Find(...)
-            return null;
+            var filter = Builders<User>.Filter.Eq(m => m.Email, email);
+            return await _usersCollection.Find<User>(filter).FirstOrDefaultAsync(cancellationToken);
         }
 
         /// <summary>
@@ -76,8 +75,13 @@ namespace M220N.Repositories
                 // DO NOT STORE CLEAR-TEXT PASSWORDS! Instead, use the helper class
                 // we have created for you: PasswordHashOMatic.Hash(password)
                 //
-                // // user = new User...
-                // // await _usersCollection.InsertOneAsync(...)
+                user = new User
+                {
+                    Name = name,
+                    Email = email,
+                    HashedPassword = PasswordHashOMatic.Hash(password)
+                };
+                await _usersCollection.InsertOneAsync(user);
                 //
                 // // TODO Ticket: Durable Writes
                 // // To use a more durable Write Concern for this operation, add the 
@@ -127,10 +131,13 @@ namespace M220N.Repositories
                 // 
                 // If the session doesn't exist, allow MongoDB to create a
                 // new one by passing the IsUpsert update option.
-                //  await _sessionsCollection.UpdateOneAsync(
-                //  new BsonDocument(...),
-                //  Builders<Session>.Update.Set(...).Set(...),
-                //  new UpdateOptions(...));
+                var filter = Builders<Session>.Filter.Eq(m => m.UserId, storedUser.Email);
+                await _sessionsCollection.UpdateOneAsync(filter,
+                    new BsonDocument("$set",
+                    new BsonDocument("Jwt", user.AuthToken)),
+                    new UpdateOptions { IsUpsert = true }
+                    );
+
 
                 storedUser.AuthToken = user.AuthToken;
                 return new UserResponse(storedUser);
@@ -152,8 +159,8 @@ namespace M220N.Repositories
         {
             // TODO Ticket: User Management
             // Delete the document in the `sessions` collection matching the email.
-            
-            await _sessionsCollection.DeleteOneAsync(new BsonDocument(), cancellationToken);
+            var filter = Builders<Session>.Filter.Eq(m => m.UserId, email);
+            await _sessionsCollection.DeleteOneAsync(filter, null, cancellationToken);
             return new UserResponse(true, "User logged out.");
         }
 
@@ -167,7 +174,12 @@ namespace M220N.Repositories
         {
             // TODO Ticket: User Management
             // Retrieve the session document corresponding with the user's email.
-            return await _sessionsCollection.Find(new BsonDocument()).FirstOrDefaultAsync();
+            return await _sessionsCollection.Find(Builders<Session>.Filter.Eq(m => m.UserId, email)).FirstOrDefaultAsync();
+
+            /*
+             MongoDB way:
+            return await _sessionsCollection.Find(new BsonDocument("user_id", email)).FirstOrDefaultAsync(cancellationToken);
+             */
         }
 
         /// <summary>
