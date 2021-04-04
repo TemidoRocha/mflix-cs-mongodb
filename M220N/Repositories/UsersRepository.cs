@@ -81,7 +81,8 @@ namespace M220N.Repositories
                     Email = email,
                     HashedPassword = PasswordHashOMatic.Hash(password)
                 };
-                await _usersCollection.InsertOneAsync(user);
+                await _usersCollection.WithWriteConcern(WriteConcern.WMajority).
+                    InsertOneAsync(user, cancellationToken: cancellationToken);
                 //
                 // // TODO Ticket: Durable Writes
                 // // To use a more durable Write Concern for this operation, add the 
