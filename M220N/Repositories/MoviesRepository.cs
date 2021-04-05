@@ -89,6 +89,7 @@ namespace M220N.Repositories
                     // Ticket: Get Comments
                     // Add a lookup stage that includes the
                     // comments associated with the retrieved movie
+                    .Lookup( _commentsCollection, m => m.Id, c => c.MovieId, (Movie m) => m.Comments)
                     .FirstOrDefaultAsync(cancellationToken);
             }
 
@@ -212,18 +213,19 @@ namespace M220N.Repositories
             string sortKey = DefaultSortKey, int limit = DefaultMoviesPerPage,
             int page = 0, params string[] genres)
         {
-
+             var returnValue = new List<Movie>();
             var sort = new BsonDocument(sortKey, DefaultSortOrder);
 
             // TODO Ticket: Enable filtering of movies by genre.
             // If you get stuck see the ``GetMoviesByCastAsync`` method above.
-            return await _moviesCollection
+            returnValue = await _moviesCollection
                .Find(Builders<Movie>.Filter.In("genres", genres))
                .Limit(limit)
                .Skip(page * limit)
                .Sort(sort)
                .ToListAsync(cancellationToken);
 
+            return returnValue;
             // // TODO Ticket: Paging
             // TODO Ticket: Paging
             // Modify the code you added in the Text and Subfield ticket to
