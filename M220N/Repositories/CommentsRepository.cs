@@ -18,7 +18,7 @@ namespace M220N.Repositories
 
         public CommentsRepository(IMongoClient mongoClient)
         {
-            var camelCaseConvention = new ConventionPack {new CamelCaseElementNameConvention()};
+            var camelCaseConvention = new ConventionPack { new CamelCaseElementNameConvention() };
             ConventionRegistry.Register("CamelCase", camelCaseConvention, type => true);
 
             _commentsCollection = mongoClient.GetDatabase("sample_mflix").GetCollection<Comment>("comments");
@@ -50,6 +50,8 @@ namespace M220N.Repositories
                 // Ticket: Add a new Comment
                 // Implement InsertOneAsync() to insert a
                 // new comment into the comments collection.
+                await _commentsCollection.WithWriteConcern(WriteConcern.WMajority).
+                    InsertOneAsync(newComment, new InsertOneOptions(), cancellationToken: cancellationToken);
 
                 return await _moviesRepository.GetMovieAsync(movieId.ToString(), cancellationToken);
             }
@@ -77,13 +79,11 @@ namespace M220N.Repositories
             // existing comment. Remember that only the original
             // comment owner can update the comment!
             //
-            // // return await _commentsCollection.UpdateOneAsync(
-            // // Builders<Comment>.Filter.Where(...),
-            // // Builders<Comment>.Update.Set(...).Set(...),
-            // // new UpdateOptions { ... } ,
-            // // cancellationToken);
-
-            return null;
+            return await _commentsCollection.UpdateOneAsync(
+            Builders<Comment>.Filter.Where(x => x.Email == user.Email && x.Id == commentId),
+            Builders<Comment>.Update.Set(u => u.Text, comment).Set(u => u.Date, DateTime.UtcNow),
+            new UpdateOptions { IsUpsert = false },
+            cancellationToken);
         }
 
         /// <summary>
