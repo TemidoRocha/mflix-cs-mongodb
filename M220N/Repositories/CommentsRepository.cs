@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using M220N.Models;
@@ -122,18 +123,50 @@ namespace M220N.Repositories
             */
             try
             {
-                List<ReportProjection> result = null;
+                // List<ReportProjection> result = null;
                 // TODO Ticket: User Report
                 // Return the 20 users who have commented the most on MFlix. You will need to use
                 // the Group, Sort, Limit, and Project methods of the Aggregation pipeline.
                 //
-                // // result = await _commentsCollection
-                // //   .WithReadConcern(...)
-                // //   .Aggregate()
-                // //   .Group(...)
-                // //   .Sort(...).Limt(...).Project(...).ToListAsync()
+
+                /*
+                 * Here we can see the aggregation made on atlas and the usage with the driver
+                var fromAtlas= new BsonDocument[] {
+                     new BsonDocument("$group",
+                    new BsonDocument
+                        {
+                            { "_id", "$email" },
+                            { "count",
+                    new BsonDocument("$sum", 1) },
+                        }),
+                    new BsonDocument("$sort",
+                    new BsonDocument("count", -1)),
+                    new BsonDocument("$limit", 20)
+                };
+                */
+
+                List<ReportProjection> result = null;
+
+                var projection = Builders<BsonDocument>.Projection
+                    .Include("count");
+                //.Exclude("ID");
+
+
+                result = await _commentsCollection
+                  .WithReadConcern(ReadConcern.Majority)
+                  .Aggregate()
+                  .Group(new BsonDocument
+                    {
+                        { "_id", "$email" },
+                        {"count", new BsonDocument("$sum", 1)}
+                    })
+                  .Sort(new BsonDocument { { "count", -1 } })
+                  .Limit(20)
+                  .Project<ReportProjection>(projection)
+                  .ToListAsync();
 
                 return new TopCommentsProjection(result);
+
             }
             catch (Exception ex)
             {
