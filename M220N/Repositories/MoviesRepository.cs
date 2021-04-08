@@ -93,13 +93,15 @@ namespace M220N.Repositories
                     .FirstOrDefaultAsync(cancellationToken);
             }
 
-            catch (Exception ex)
+            catch (FormatException ex)
             {
                 // TODO Ticket: Error Handling
                 // Catch the exception and check the exception type and message contents.
                 // Return null if the exception is due to a bad/missing Id. Otherwise,
-                // throw.
-
+                
+                // Console.WriteLine("\nMessage ---\n{0}", ex.Message);
+                // Console.WriteLine("\nMessage ---\n{0}", ex.Message.Contains("is not a valid 24 digit hex string."));
+                if (ex.Message.Contains("is not a valid 24 digit hex string")) return null;
                 throw;
             }
         }
