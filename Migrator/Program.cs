@@ -18,8 +18,9 @@ namespace Migrator
         static IMongoCollection<Movie> _moviesCollection;
 
         // TODO: Update this connection string as needed.
-        static string mongoConnectionString = "";
-        
+        static string mongoConnectionString = "mongodb+srv://m220student:m220password@sandbox.aarx9.mongodb.net/myFirstDatabase?retryWrites=true&w=majority";
+
+
         static async Task Main(string[] args)
         {
             Setup();
@@ -35,7 +36,28 @@ namespace Migrator
                 // datePipelineResults. You will need to use a ReplaceOneModel<Movie>
                 // (https://api.mongodb.com/csharp/current/html/T_MongoDB_Driver_ReplaceOneModel_1.htm).
                 //
-                // // bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(...
+                // bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync();
+
+                /* mongodb result */
+                bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(
+                   datePipelineResults.Select(updatedMovie => new ReplaceOneModel<Movie>(
+                      new FilterDefinitionBuilder<Movie>().Where(m => m.Id == updatedMovie.Id),
+                      updatedMovie)));
+                /* end */
+
+                /* from the discusion
+                List<ReplaceOneModel<Movie>> operations = new List<ReplaceOneModel<Movie>>();
+                BulkWriteOptions options = new BulkWriteOptions() { IsOrdered = false };
+
+                datePipelineResults.ForEach(c =>
+                {
+                    operations.Add(new ReplaceOneModel<Movie>(Builders<Movie>.Filter.Where(x => x.Id == c.Id), c));
+                });
+
+
+                bulkWriteDatesResult = await _moviesCollection.BulkWriteAsync(operations, options);
+
+                end from discussion */
 
                 Console.WriteLine($"{bulkWriteDatesResult.ProcessedRequests.Count} records updated.");
             }
@@ -52,6 +74,27 @@ namespace Migrator
                 //
                 // // bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(...
 
+                /* mongodb result */
+                bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(
+                    ratingPipelineResults.Select(updatedMovie => new ReplaceOneModel<Movie>(
+                        new FilterDefinitionBuilder<Movie>().Where(m => m.Id == updatedMovie.Id),
+                        updatedMovie)));
+
+                /* end */
+
+                /* from the discusion
+                List<ReplaceOneModel<Movie>> operations = new List<ReplaceOneModel<Movie>>();
+                BulkWriteOptions options = new BulkWriteOptions() { IsOrdered = false };
+
+                ratingPipelineResults.ForEach(c =>
+                {
+                    operations.Add(new ReplaceOneModel<Movie>(Builders<Movie>.Filter.Where(x => x.Id == c.Id), c));
+                });
+
+
+                bulkWriteRatingsResult = await _moviesCollection.BulkWriteAsync(operations, options);
+                end from discussion */
+
                 Console.WriteLine($"{bulkWriteRatingsResult.ProcessedRequests.Count} records updated.");
             }
 
@@ -67,11 +110,11 @@ namespace Migrator
 
         static void Setup()
         {
-            var camelCaseConvention = new ConventionPack {new CamelCaseElementNameConvention()};
+            var camelCaseConvention = new ConventionPack { new CamelCaseElementNameConvention() };
             ConventionRegistry.Register("CamelCase", camelCaseConvention, type => true);
 
             var mongoUri = mongoConnectionString;
-            var mflixClient = new MongoClient(mongoUri);    
+            var mflixClient = new MongoClient(mongoUri);
             var moviesDatabase = mflixClient.GetDatabase("sample_mflix");
             _moviesCollection = moviesDatabase.GetCollection<Movie>("movies");
         }
